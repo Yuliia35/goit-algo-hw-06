@@ -1,128 +1,108 @@
 from collections import UserDict
+import re
 
-class Field:
+class Field: #Базовий клас для полів запису
+    pass 
+
+class Name(Field): #Клас для зберігання імені контакту. Обов'язкове поле
     def __init__(self, value):
-        if self.__is_valid(value):
-            self.value = value
-        else:
-            raise ValueError
-        
-    def __is_valid(value):
-        return True
+        if not value:
+            raise ValueError("Name cannot be empty.")
+        self.value = value
 
-    def __str__(self):
-        return str(self.value)
-
-class Name(Field):
-    # реалізація класу
-
+class Phone(Field): #Клас для зберігання номера телефону з перевіркою формату
     def __init__(self, value):
-        if self.__is_valid(value):
-            self.value = value
-        else:
-            raise ValueError
+        if not self.validate(value):
+            raise ValueError("Phone number must be 10 digits long.")
+        self.value = value
 
-    def __is_valid(self, value):
-        if len(value)>0:
-            return True
-        raise ValueError
+    @staticmethod
+    def validate(value): #Перевірка формату номера телефону
+        return bool(re.fullmatch(r'^\d{10}$', value))
 
-class Phone(Field):
-    # Реалізовано валідацію номера телефону (має бути перевірка на 10 цифр).
-
-    def __init__(self, value):
-        if self.__is_valid(value):
-            self.value = value
-        else:
-            raise ValueError
-
-    def __is_valid(self, value):
-        if value.isdigit() and len(value) == 10:
-            return True
-        raise ValueError
-    
-class Record:
+class Record: #Клас для зберігання контактної інформації
     def __init__(self, name):
         self.name = Name(name)
         self.phones = []
 
-    def __str__(self):
-        return f"Contact name: {self.name.value}, phones: {'; '.join(p.value for p in self.phones)}"
+    def add_phone(self, phone_number): #Додавання телефону до запису
+        phone = Phone(phone_number)
+        self.phones.append(phone)
 
-# Реалізовано зберігання об'єкта Name в окремому атрибуті.
-# Реалізовано зберігання списку об'єктів Phone в окремому атрибуті.
-    def add_phone(self, phone):
-        my_phone = Phone(phone)         
-        self.phones.append(my_phone)
+    def remove_phone(self, phone_number): #Видалення телефону із запису
+        self.phones = [phone for phone in self.phones if phone.value != phone_number]
 
-    def remove_phone(self, phone):
-        f = Phone(phone)
-        for user_phone in self.phones:
-            if user_phone.value == f.value:
-                del self.phones[self.phones.index(user_phone)]
+    def edit_phone(self, old_number, new_number): #Редагувати існуючий номер телефону
+        for phone in self.phones:
+            if phone.value == old_number:
+                if not Phone.validate(new_number):
+                    raise ValueError("New phone number must be 10 digits long.")
+                phone.value = new_number
+                return
+        raise ValueError("Old phone number not found.")
 
-    def edit_phone(self, old_phone, new_phone):
-#метод  edit_phone  має повертати  помилку, якщо телефон не знайдено.
-        phone_old = Phone(old_phone)
-        phone_new = Phone(new_phone)
-        self.remove_phone(phone_old.value)
-        self.add_phone(phone_new.value)
-
-    def find_phone(self, phone):
-#метод  find_phone  має повертати або об'єкт, або None. Ніяких рядків.
-        f = Phone(phone)
-        for user_phone in self.phones:
-            if f.value == user_phone.value:
-                return user_phone            
+    def find_phone(self, phone_number): #Пошук контакту за номером телефону
+        """#Пошук об'єкта Телефон за номером."""
+        for phone in self.phones:
+            if phone.value == phone_number:
+                return phone
         return None
 
-# --------------------
-class AddressBook(UserDict):
+class AddressBook(UserDict): #Клас для зберігання та керування записами
+    def add_record(self, record): #Додати запис до адресної книги
+        self.data[record.name.value] = record
 
-    def add_record(self, record):
-        self.data[record.name] = record
+    def find(self, name): #Знайдіть запис за назвою
+        return self.data.get(name)
 
-    def find(self, name):
-        for user_name, record in self.data.items():
-            if user_name.value == name:
-                return record
-        return None
+    def delete(self, name): #Видалити запис за назвою
+        if name in self.data:
+            del self.data[name]
 
-    def delete(self, name):
-        for user_name, record in self.data.items():
-            if user_name.value == name:
-                del self.data[record.name]
-                break
+    def __str__(self): #Гарне рядкове представлення адресної книги)
+        result = "Address Book:\n"
+        for name, record in self.data.items():
+            phone_numbers = ', '.join(phone.value for phone in record.phones)
+            result += f"Name: {name}, Phones: [{phone_numbers}]\n"
+        return result.strip()
 
-# Створення нової адресної книги
-book = AddressBook()
+# Example usage:
+if __name__ == "__main__":
+    book = AddressBook()
 
     # Створення запису для John
-john_record = Record("John")
-john_record.add_phone("1234567890")
-john_record.add_phone("5555555555")
-
-    # Додавання запису John до адресної книги
-book.add_record(john_record)
-
+    record1 = Record("John")
+    record1.add_phone("1234567890")
+    record1.add_phone("5555555555")
+    
     # Створення та додавання нового запису для Jane
-jane_record = Record("Jane")
-jane_record.add_phone("9876543210")
-book.add_record(jane_record)
+    record2 = Record("Jane")
+    record2.add_phone("9876543210")
+
+    # Додавання записів до адресної книги
+    book.add_record(record1)
+    book.add_record(record2)
 
     # Виведення всіх записів у книзі
-     
-print(book)
+    print(book)
 
-    # Знаходження та редагування телефону для John
-john = book.find("John")
-john.edit_phone("1234567890", "1112223333")
+    # Пошук запису для John
+    found_record = book.find("John")
+    if found_record:
+        print("+ Found John's record.")
+    else:
+        print("- John's record not found.")
 
-print(john)  # Виведення: Contact name: John, phones: 1112223333; 5555555555
-
-    # Пошук конкретного телефону у записі John
-found_phone = john.find_phone("5555555555")
-print(f"{john.name}: {found_phone}")  # Виведення: John: 5555555555
+    # Редагування номера телефону
+    try:
+        found_record.edit_phone("1234567890", "1111111111")
+        print("Updated John's phone number.")
+    except ValueError as e:
+        print(f"Error: {e}")
 
     # Видалення запису Jane
-book.delete("Jane")
+    book.delete("Jane")
+    print("Deleted Jane's record.")
+
+    # Виведення всіх записів у книзі
+    print(book)
